@@ -80,7 +80,7 @@ impl Coin {
             } else if regtest {
                 "2"
             } else {
-                "0"
+                "1"
             };
             crate::db::put_prop(&mut connection, "coin", coin_value).await?;
         }
