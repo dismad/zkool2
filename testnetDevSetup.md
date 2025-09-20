@@ -90,8 +90,8 @@ Click Add SDK to PATH
 
 ```bash
 git clone https://github.com/dismad/zkool2.git
-git checkout testnet
 cd zkool2
+git checkout testnet
 ```
 
 The following was changed in coin.rs
