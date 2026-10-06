@@ -9,9 +9,12 @@ use tracing::debug;
 use zcash_protocol::consensus::{NetworkUpgrade, Parameters};
 use zcash_trees::network::Network;
 
+#[cfg(feature = "zsa")]
 use orchard::issuance::auth::IssueValidatingKey;
+#[cfg(feature = "zsa")]
 use orchard::issuance::auth::ZSASchnorr;
 use orchard::note::AssetBase;
+#[cfg(feature = "zsa")]
 use orchard::note::AssetId;
 
 use crate::{
@@ -210,24 +213,6 @@ pub async fn warp_sync(
                 // messages (same transaction ordering guarantee).
                 for cb in &bs {
                     for vtx in &cb.vtx {
-                        for iss in &vtx.issuances {
-                            let desc_hash: [u8; 32] =
-                                iss.asset_desc_hash.as_slice().try_into().unwrap();
-                            let ik = IssueValidatingKey::<ZSASchnorr>::decode(&iss.ik)
-                                .expect("invalid issuer key in issuance");
-                            let asset_id = AssetId::new_v0(&ik, &desc_hash);
-                            let asset_base = AssetBase::custom(&asset_id);
-                            tx_decrypted
-                                .send(WarpSyncMessage::Issuance(Issuance {
-                                    asset_desc_hash: iss.asset_desc_hash.clone(),
-                                    ik: iss.ik.clone(),
-                                    asset_base: asset_base.to_bytes().to_vec(),
-                                    finalized: iss.finalize,
-                                    height: cb.height as u32,
-                                }))
-                                .await
-                                .context("sending issuance")?;
-                        }
                     }
                 }
 

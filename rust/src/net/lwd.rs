@@ -1,3 +1,16 @@
+
+fn strip_public_nu7_zip233(tx: &[u8]) -> Vec<u8> {
+    if std::env::var("ZKOOL_PUBLIC_TESTNET_NU7").ok().as_deref() != Some("1") || tx.len() < 28 {
+        return tx.to_vec();
+    }
+    let version = u32::from_le_bytes(tx[0..4].try_into().unwrap());
+    let group = u32::from_le_bytes(tx[4..8].try_into().unwrap());
+    if version != 0x8000_0006 || group != 0xD884_B698 {
+        return tx.to_vec();
+    }
+    tracing::error!("post header {:02x?}", &tx[..16]);
+    tx.to_vec()
+}
 use anyhow::Result;
 use std::time::Duration;
 use tracing::debug;
@@ -77,11 +90,18 @@ impl LwdServer for GRPCClient {
             .into_inner();
         let height = rtx.height as u32;
         let branch_id = BranchId::for_height(network, BlockHeight::from_u32(height));
-        let tx = Transaction::read(&mut &rtx.data[..], branch_id)?;
+        let read_branch = if std::env::var("ZKOOL_PUBLIC_TESTNET_NU7").ok().as_deref() == Some("1") {
+            BranchId::Nu6_3
+        } else {
+            branch_id
+        };
+        let raw = rtx.data.clone();
+        let tx = Transaction::read(&mut raw.as_slice(), read_branch)?;
         Ok((height, tx))
     }
 
     async fn post_transaction(&mut self, height: u32, tx: &[u8]) -> Result<String> {
+        let tx = strip_public_nu7_zip233(tx);
         let rep = self
             .send_transaction(Request::new(RawTransaction {
                 data: tx.to_vec(),

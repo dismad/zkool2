@@ -340,6 +340,7 @@ pub async fn decode_raw_transaction(
             OrchardBundle::OrchardVanilla(b) => {
                 process_orchard_bundle!(b, 2, OrchardDomain);
             }
+            #[cfg(feature = "zsa")]
             OrchardBundle::OrchardZSA(_b) => {
                 // TODO: ZSA mempool processing
             }

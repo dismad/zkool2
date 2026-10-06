@@ -188,7 +188,7 @@ fn construct_issuance_note(
     }
     let rseed = rseed.unwrap();
 
-    let note = Note::from_parts(addr, value, *asset_base, rho, rseed, NoteVersion::V3ZSA);
+    let note = Note::from_parts(addr, value, *asset_base, rho, rseed, NoteVersion::V3);
     if note.is_none().into() {
         anyhow::bail!("Invalid issuance note");
     }

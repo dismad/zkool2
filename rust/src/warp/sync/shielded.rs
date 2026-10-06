@@ -14,8 +14,7 @@ use zcash_trees::network::Network;
 use crate::lwd::{CompactBlock, CompactIssueNote, CompactTx};
 use crate::warp::{Edge, Hasher, Witness, MERKLE_DEPTH};
 use crate::Hash32;
-use ::orchard::issuance::auth::{IssueValidatingKey, ZSASchnorr};
-use ::orchard::note::{AssetBase, AssetId};
+use ::orchard::note::AssetBase;
 use zcash_trees::types::{Note, Transaction, WarpSyncMessage, UTXO};
 
 pub mod ironwood;
@@ -246,47 +245,6 @@ impl<P: ShieldedProtocol> Synchronizer<P> {
                 let mut tx_issuance_cmxs: Vec<[u8; 32]> = Vec::new();
                 let mut note_vout = actions_len;
 
-                for iss in &tx.issuances {
-                    let desc_hash: [u8; 32] = iss
-                        .asset_desc_hash
-                        .as_slice()
-                        .try_into()
-                        .map_err(|_| anyhow::anyhow!("Invalid asset_desc_hash length"))?;
-                    let ik = IssueValidatingKey::<ZSASchnorr>::decode(&iss.ik)
-                        .map_err(|e| anyhow::anyhow!("Invalid issuer key: {e}"))?;
-                    let asset_id = AssetId::new_v0(&ik, &desc_hash);
-                    let asset_base = AssetBase::custom(&asset_id);
-
-                    for note in &iss.notes {
-                        // Compute cmx for tree building. Returns None for
-                        // protocols that don't support issuance (Sapling, Ironwood).
-                        if let Some(cmx) = P::compute_issuance_cmx(note, &asset_base)? {
-                            tx_issuance_cmxs.push(cmx);
-                        }
-
-                        // Check if this note belongs to any of our wallet keys.
-                        for (account, scope, ivk, nk) in &self.keys {
-                            if let Some((n, dbn)) = P::try_decrypt_issuance(
-                                &network,
-                                *account,
-                                *scope,
-                                ivk,
-                                height,
-                                ivtx as u32,
-                                note_vout,
-                                note,
-                                &asset_base,
-                            )
-                            .unwrap_or_else(|e| {
-                                tracing::warn!("issuance decrypt error: {e}");
-                                None
-                            }) {
-                                notes.push((n, dbn, nk));
-                            }
-                        }
-                        note_vout += 1;
-                    }
-                }
 
                 if !tx_issuance_cmxs.is_empty() {
                     issuance_cmxs.push((height, ivtx as u32, tx_issuance_cmxs));

@@ -90,7 +90,7 @@ async fn main() -> Result<()> {
     } = config;
 
     if let Some(hex) = decode_tx {
-        use zcash_primitives::transaction::OrchardBundle;
+        use orchard::Bundle;
         use zcash_primitives::transaction::Transaction;
         use zcash_protocol::consensus::BranchId;
         let bytes = hex::decode(hex.trim())?;
@@ -112,6 +112,7 @@ async fn main() -> Result<()> {
                     .orchard_bundle()
                     .map(|b| match b {
                         OrchardBundle::OrchardVanilla(b) => b.actions().len(),
+                        #[cfg(feature = "zsa")]
                         OrchardBundle::OrchardZSA(b) => b.actions().len(),
                     })
                     .unwrap_or(0);

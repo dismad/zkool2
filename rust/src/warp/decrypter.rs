@@ -20,7 +20,6 @@ use orchard::{
     keys::IncomingViewingKey,
     note::{ExtractedNoteCommitment, Nullifier, Rho},
     note_encryption::{CompactAction, IronwoodDomain, OrchardDomain},
-    zsa::OrchardZSADomain,
 };
 use sapling_crypto::{
     note_encryption::{
@@ -173,43 +172,6 @@ pub fn try_orchard_decrypt(
 
             let note_plaintext = NoteBytesData::<84>::from_slice(&plaintext[..84])
                 .ok_or_else(|| anyhow::anyhow!("Invalid orchard note plaintext"))?;
-            let parsed = OrchardZSADomain { rho }
-                .parse_note_plaintext_without_memo_ivk(&pivk, note_plaintext.as_ref());
-            tracing::debug!(
-                "ZSA parsed result: height={} vout={} is_some={}",
-                height,
-                vout,
-                parsed.is_some()
-            );
-            if let Some((note, recipient)) = parsed {
-                let cmx = ExtractedNoteCommitment::from(note.commitment());
-                let value = note.value().inner();
-                let matched = cmx.to_bytes() == *ca.cmx;
-                if matched {
-                    let is_zec = bool::from(note.asset().is_zatoshi());
-                    let asset_base = if is_zec {
-                        vec![]
-                    } else {
-                        note.asset().to_bytes().to_vec()
-                    };
-                    let dbn = Note {
-                        pool: 2,
-                        account,
-                        scope,
-                        height,
-                        value,
-                        rcm: note.rseed().as_bytes().to_vec(),
-                        rho: rho.to_bytes().to_vec(),
-                        vout,
-                        diversifier: recipient.diversifier().as_array().to_vec(),
-                        ivtx,
-                        cmx: Vec::from(&*ca.cmx),
-                        asset_base,
-                        ..Note::default()
-                    };
-                    return Ok(Some((note, dbn)));
-                }
-            }
         }
         return Ok(None);
     }

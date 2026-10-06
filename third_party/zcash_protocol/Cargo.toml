@@ -1,0 +1,19 @@
+[package]
+name = "zcash_protocol"
+version = "0.10.0-pre.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[dependencies]
+memuse = { version = "0.2.2", default-features = false, optional = true }
+document-features = { version = "0.2", optional = true }
+zcash_encoding = { version = "0.4", default-features = false }
+corez = { version = "0.1.1", default-features = false, features = ["alloc"] }
+hex = { version = "0.4", default-features = false, features = ["alloc"] }
+
+[features]
+default = ["std"]
+std = ["document-features", "dep:memuse"]
+test-dependencies = []
+local-consensus = []

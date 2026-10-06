@@ -20,8 +20,8 @@ use serde_json::{json, Value};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tokio_rustls::TlsConnector;
 use webpki_roots::TLS_SERVER_ROOTS;
-use zcash_primitives::transaction::OrchardBundle;
-use zcash_primitives::{block::BlockHeader, transaction::Transaction};
+use orchard::Bundle;
+use zcash_primitives::{block::BlockHeader, transaction::{OrchardBundle, Transaction}};
 
 use byteorder::{ReadBytesExt, LE};
 use tokio_stream::wrappers::ReceiverStream;
@@ -397,6 +397,7 @@ pub fn parse_block(
         if let Some(orchard_bundle) = tx_data.orchard_bundle() {
             match orchard_bundle {
                 OrchardBundle::OrchardVanilla(b) => push_actions!(b, actions),
+                #[cfg(feature = "zsa")]
                 OrchardBundle::OrchardZSA(_b) => {
                     // TODO: ZSA compact action extraction
                 }
@@ -409,8 +410,11 @@ pub fn parse_block(
 
         // Extract ZSA issuance data from the issue bundle.
         let mut issuances = vec![];
+        #[cfg(feature = "zsa")]
         if let Some(ref issue_bundle) = tx_data.issue_bundle() {
+            #[cfg(feature = "zsa")]
             let ik = issue_bundle.ik().encode(); // 33 bytes: algorithm_byte + x-only pubkey
+            #[cfg(feature = "zsa")]
             for action in issue_bundle.actions().iter() {
                 let issued_amount: u64 = action.notes().iter().map(|n| n.value().inner()).sum();
                 let notes: Vec<CompactIssueNote> = action

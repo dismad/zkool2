@@ -220,8 +220,9 @@ impl TxPlan {
 
         let pczt = Pczt::parse(&package.pczt)
             .map_err(|error| anyhow::anyhow!("Failed to parse PCZT: {error:?}"))?;
-        let is_zsa = BranchId::try_from(*pczt.global().consensus_branch_id())
-            .is_ok_and(|branch_id| branch_id == BranchId::Nu7);
+        let branch_id = BranchId::try_from(*pczt.global().consensus_branch_id());
+        let is_zsa = branch_id.is_ok_and(|branch_id| branch_id == BranchId::Nu7)
+            && *pczt.global().consensus_branch_id() != 0x7719_0AD9;
         let height = *pczt.global().expiry_height();
         let mut fee = 0i64;
         let verifier = Verifier::new(pczt);
@@ -280,17 +281,10 @@ impl TxPlan {
             })
             .unwrap();
 
-        let verifier = if is_zsa {
-            verifier.with_orchard_zsa(|bundle| {
-                append_orchard_plan(network, bundle, &mut inputs, &mut outputs, &mut fee)
-                    .map_err(pczt::roles::verifier::OrchardError::Custom)
-            })
-        } else {
-            verifier.with_orchard(|bundle| {
-                append_orchard_plan(network, bundle, &mut inputs, &mut outputs, &mut fee)
-                    .map_err(pczt::roles::verifier::OrchardError::Custom)
-            })
-        }
+        let verifier = verifier.with_orchard(|bundle| {
+            append_orchard_plan(network, bundle, &mut inputs, &mut outputs, &mut fee)
+                .map_err(pczt::roles::verifier::OrchardError::Custom)
+        })
         .map_err(|error| anyhow::anyhow!("Failed to verify Orchard PCZT: {error:?}"))?;
 
         let _verifier = verifier
@@ -409,6 +403,7 @@ pub async fn lock_spent_notes(
                     nullifiers.push(v.nullifier().to_bytes().to_vec());
                 }
             }
+            #[cfg(feature = "zsa")]
             OrchardBundle::OrchardZSA(b) => {
                 for v in b.actions().iter() {
                     nullifiers.push(v.nullifier().to_bytes().to_vec());
